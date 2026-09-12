@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# fswatch Windows MSYS2 (UCRT64) Compilation Script
+# fswatch Windows MSYS2 (UCRT64) Compilation & SDK Packaging Script
 # ==============================================================================
 set -euo pipefail
 
@@ -9,6 +9,7 @@ cd "$SCRIPT_DIR"
 
 BUILD_TYPE="${1:-Release}"
 INSTALL_DIR="${SCRIPT_DIR}/dist"
+SDK_PKG_DIR="${INSTALL_DIR}/libfswatch-sdk"
 
 echo "=== 1. Checking Environment ==="
 echo "MSYSTEM: ${MSYSTEM:-unknown}"
@@ -27,8 +28,6 @@ if [[ -f "patches/01-windows-signal-handler.patch" ]] && git apply --check patch
 fi
 
 echo "=== 2. Configuring and Building Standalone Static Executable ==="
-# -static: Links libstdc++ and libgcc statically so the .exe has zero non-system DLL dependencies.
-# -DUSE_NLS=OFF: Avoids dynamic libintl-8.dll / libiconv-2.dll dependency for standalone CLI.
 cmake -B build-standalone -G Ninja \
     -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
     -DCMAKE_EXE_LINKER_FLAGS="-static" \
@@ -56,14 +55,49 @@ cmake -B build-static -G Ninja \
 cmake --build build-static
 cmake --install build-static
 
-echo "=== 5. Verifying Output ==="
-echo "Testing standalone executable:"
-"${INSTALL_DIR}/standalone/bin/fswatch.exe" --version
-echo "Available monitors:"
-"${INSTALL_DIR}/standalone/bin/fswatch.exe" -M
+echo "=== 5. Generating MSVC Import Library (.lib) ==="
+cd "${INSTALL_DIR}/shared"
+gendef bin/libfswatch.dll
+dlltool -d libfswatch.def -l lib/libfswatch.lib -D libfswatch.dll
+cd "$SCRIPT_DIR"
 
-echo "=== Build Completed Successfully! ==="
-echo "Output directories:"
-echo " - Standalone CLI : ${INSTALL_DIR}/standalone/bin/fswatch.exe"
-echo " - Shared Lib/DLL : ${INSTALL_DIR}/shared/"
-echo " - Static Lib     : ${INSTALL_DIR}/static/"
+echo "=== 6. Packaging libfswatch SDK (bin/ lib/ include/) ==="
+rm -rf "${SDK_PKG_DIR}"
+mkdir -p "${SDK_PKG_DIR}/bin" "${SDK_PKG_DIR}/lib" "${SDK_PKG_DIR}/include"
+
+# 1. Copy headers to include/
+cp -rf "${INSTALL_DIR}/shared/include/"* "${SDK_PKG_DIR}/include/"
+
+# 2. Copy libraries to lib/
+cp -f "${INSTALL_DIR}/shared/lib/libfswatch.lib" "${SDK_PKG_DIR}/lib/"
+cp -f "${INSTALL_DIR}/shared/lib/liblibfswatch.dll.a" "${SDK_PKG_DIR}/lib/"
+cp -f "${INSTALL_DIR}/static/lib/libfswatch.a" "${SDK_PKG_DIR}/lib/"
+if [[ -d "${INSTALL_DIR}/shared/lib/cmake" ]]; then
+    cp -rf "${INSTALL_DIR}/shared/lib/cmake" "${SDK_PKG_DIR}/lib/"
+fi
+
+# 3. Copy binaries and DLL dependencies to bin/
+cp -f "${INSTALL_DIR}/shared/bin/libfswatch.dll" "${SDK_PKG_DIR}/bin/"
+cp -f "${INSTALL_DIR}/standalone/bin/fswatch.exe" "${SDK_PKG_DIR}/bin/"
+
+# Copy runtime DLLs from toolchain if present
+for dll in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll libintl-8.dll libiconv-2.dll; do
+    if [[ -f "/ucrt64/bin/${dll}" ]]; then
+        cp -f "/ucrt64/bin/${dll}" "${SDK_PKG_DIR}/bin/"
+    elif [[ -f "/mingw64/bin/${dll}" ]]; then
+        cp -f "/mingw64/bin/${dll}" "${SDK_PKG_DIR}/bin/"
+    fi
+done
+
+echo "=== 7. Verifying Output ==="
+"${SDK_PKG_DIR}/bin/fswatch.exe" --version
+"${SDK_PKG_DIR}/bin/fswatch.exe" -M
+
+echo ""
+echo "=============================================================================="
+echo "  libfswatch SDK Package Successfully Created at: ${SDK_PKG_DIR}"
+echo "=============================================================================="
+echo "Package directory layout:"
+ls -lh "${SDK_PKG_DIR}/bin"
+ls -lh "${SDK_PKG_DIR}/lib"
+ls -lh "${SDK_PKG_DIR}/include"
