@@ -8,6 +8,21 @@
 [![C/C++ CI](https://github.com/emcrisostomo/fswatch/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/emcrisostomo/fswatch/actions/workflows/c-cpp.yml)
 [![CMake](https://github.com/emcrisostomo/fswatch/actions/workflows/cmake.yml/badge.svg)](https://github.com/emcrisostomo/fswatch/actions/workflows/cmake.yml)
 
+## Windows 编译与 MSVC 集成说明 (Windows Support & MSVC Guide)
+
+本仓库增加了针对 **Windows 平台（64位 x64 与 32位 x86）** 的完整构建支持、MSVC 项目集成方案、补丁工具包及 C++ Demo。
+
+### 核心文档与资源导航
+- **[WINDOWS_x64_MANUAL.md](WINDOWS_x64_MANUAL.md)**：**64位 (x64)** 开发与集成手册（基于 MSYS2 UCRT64 与 MSVC v142）。
+- **[WINDOWS_x86_MANUAL.md](WINDOWS_x86_MANUAL.md)**：**32位 (x86 / Win32)** 开发与集成手册（基于 MSYS2 MINGW32 与 MSVC v142）。
+- **[patches/](patches/)**：针对 Windows 平台的源码兼容性独立补丁集：
+  - `01-windows-signal-handler.patch`：修复 Windows 信号处理接口兼容性（64位/32位通用）。
+  - `02-win32-msvcrt-quick-exit.patch`：修复 32位旧版 MSVCRT 运行时兼容性。
+- **[demo/](demo/)**：使用 MSVC v142 (Visual Studio 2019) 编译的 C++ 示例工程，调用 `libfswatch` 的 C 接口实现实时目录监控。
+- **[build_demo.bat](build_demo.bat)** / **[build-windows.ps1](build-windows.ps1)**：一键构建脚本与运行时 DLL 自动收集打包工具。
+
+---
+
 README
 ======
 

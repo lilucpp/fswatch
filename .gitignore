@@ -171,3 +171,13 @@ test/test-suite.log
 # Agentic files
 .agents/
 .codex
+
+# Windows and Demo build artifacts
+build-*/
+dist/
+demo/bin/
+demo/build/
+demo/build-*/
+*.lib
+*.dll.a
+*.def

@@ -1,0 +1,47 @@
+diff --git a/fswatch/src/fswatch.cpp b/fswatch/src/fswatch.cpp
+index 9cf607a..5c841dc 100644
+--- a/fswatch/src/fswatch.cpp
++++ b/fswatch/src/fswatch.cpp
+@@ -345,6 +345,34 @@ static bool validate_latency(double latency, const char *pOptarg)
+ 
+ static void register_signal_handlers()
+ {
++#if defined(_WIN32) && !defined(__CYGWIN__)
++  if (std::signal(SIGTERM, close_handler) != SIG_ERR)
++  {
++    FSW_ELOG(_("SIGTERM handler registered.\n"));
++  }
++  else
++  {
++    std::cerr << _("SIGTERM handler registration failed.") << std::endl;
++  }
++
++  if (std::signal(SIGABRT, close_handler) != SIG_ERR)
++  {
++    FSW_ELOG(_("SIGABRT handler registered.\n"));
++  }
++  else
++  {
++    std::cerr << _("SIGABRT handler registration failed.") << std::endl;
++  }
++
++  if (std::signal(SIGINT, close_handler) != SIG_ERR)
++  {
++    FSW_ELOG(_("SIGINT handler registered.\n"));
++  }
++  else
++  {
++    std::cerr << _("SIGINT handler registration failed") << std::endl;
++  }
++#else
+   struct sigaction action{};
+   action.sa_handler = close_handler;
+   sigemptyset(&action.sa_mask);
+@@ -376,6 +404,7 @@ static void register_signal_handlers()
+   {
+     std::cerr << _("SIGINT handler registration failed") << std::endl;
+   }
++#endif
+ }
+ 
+ static void print_event_path(const event& evt)
